@@ -125,6 +125,11 @@ const Navbar = () => {
                         Change Password
                       </DropdownMenuLabel>
                     </Link>
+                    <Link href="/your-check">
+                      <DropdownMenuLabel className="cursor-pointer text-base md:text-lg text-[#131313] leading-[120%] font-medium hover:text-primary">
+                        Your Check
+                      </DropdownMenuLabel>
+                    </Link>
                     <DropdownMenuLabel
                       onClick={() => setLogoutModalOpen(true)}
                       className="flex items-center gap-2 cursor-pointer text-base md:text-lg text-[#B70000] leading-[120%] font-medium hover:text-red-800"
@@ -224,6 +229,17 @@ const Navbar = () => {
                       >
                         <DropdownMenuLabel className="cursor-pointer text-base md:text-lg text-[#131313] leading-[120%] font-medium hover:text-primary">
                           Change Password
+                        </DropdownMenuLabel>
+                      </Link>
+                        <Link
+                        href="/your-check"
+                        onClick={() => {
+                          setIsOpen(false)
+                          setMobileDropdownOpen(false)
+                        }}
+                      >
+                        <DropdownMenuLabel className="cursor-pointer text-base md:text-lg text-[#131313] leading-[120%] font-medium hover:text-primary">
+                          Your Check
                         </DropdownMenuLabel>
                       </Link>
                       <DropdownMenuLabel
