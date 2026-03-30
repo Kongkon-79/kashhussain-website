@@ -103,6 +103,7 @@ export function MotChatBot({ data }: { data?: MotHistoryData | null }) {
     }
 
     try {
+    //   const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://kashhussain710.onrender.com/api";
       const response = await fetch(`${process.env.NEXT_PUBLIC_CHATBOT_URL}/ai/analysis/mot`, {
         method: "POST",
         headers: {
@@ -112,14 +113,24 @@ export function MotChatBot({ data }: { data?: MotHistoryData | null }) {
         body: JSON.stringify(payload), 
       })
 
-      const resData = await response.json()
+      const resText = await response.text();
+      console.log("Raw Bot response:", resText);
 
-      console.log("Bot response:", response)
+      let resData;
+      try {
+        resData = JSON.parse(resText);
+      } catch (e) {
+        throw new Error("Invalid JSON from bot", { cause: e });
+      }
 
-      if (resData?.status && resData?.message) {
-        setMessages((prev) => [...prev, { sender: "bot", text: resData.message }])
+      console.log("Parsed Bot response:", resData);
+
+      const botMessage = resData?.message || resData?.data?.message || resData?.response || resData?.data;
+
+      if ((resData?.status || resData?.success || resData?.status_code === 200) && botMessage) {
+        setMessages((prev) => [...prev, { sender: "bot", text: typeof botMessage === 'string' ? botMessage : JSON.stringify(botMessage) }])
       } else {
-        setMessages((prev) => [...prev, { sender: "bot", text: "Sorry, I am having trouble understanding that." }])
+        setMessages((prev) => [...prev, { sender: "bot", text: botMessage ? String(botMessage) : "Sorry, I am having trouble understanding that." }])
       }
     } catch (error) {
       console.error("Error sending message to the bot:", error)

@@ -13,6 +13,7 @@ import {
   formatRegistrationNumber,
   formatValue,
 } from "./mot-history.utils";
+import type { VehicleCheckData } from "../../vehicle-check/[regNumber]/_components/vehicle-check.types";
 
 type Props = {
   registrationNumber?: string;
@@ -43,24 +44,18 @@ export default function MotHistoryDownloadButton({
       const pageHeight = doc.internal.pageSize.getHeight();
       const marginX = 16;
       const contentWidth = pageWidth - marginX * 2;
-      const sectionGap = 8;
-      let y = 18;
+      let y = 0;
 
       const normalizedReg = formatRegistrationNumber(
         vehicle?.heroSection?.registrationNumber ||
           motHistory?.registrationNumber ||
           registrationNumber,
       );
-      const vehicleTitle =
-        [motHistory?.make, motHistory?.model].filter(Boolean).join(" ") ||
-        vehicle?.heroSection?.vehicleName ||
-        vehicle?.vehicleDetails?.modelVariant ||
-        "Vehicle record";
 
       const ensureSpace = (neededHeight = 10) => {
         if (y + neededHeight > pageHeight - 16) {
           doc.addPage();
-          y = 18;
+          y = 16;
         }
       };
 
@@ -71,14 +66,16 @@ export default function MotHistoryDownloadButton({
           color?: [number, number, number];
           indent?: number;
           lineHeight?: number;
+          font?: "normal" | "bold";
         },
       ) => {
         const size = options?.size ?? 10;
         const indent = options?.indent ?? 0;
         const lineHeight = options?.lineHeight ?? 5;
         const color = options?.color ?? [71, 85, 105];
+        const font = options?.font ?? "normal";
 
-        doc.setFont("helvetica", "normal");
+        doc.setFont("helvetica", font);
         doc.setFontSize(size);
         doc.setTextColor(...color);
 
@@ -99,7 +96,7 @@ export default function MotHistoryDownloadButton({
 
         doc.setDrawColor(203, 213, 225);
         doc.line(marginX, y, pageWidth - marginX, y);
-        y += sectionGap;
+        y += 8;
       };
 
       const writeField = (label: string, value?: string | number | null) => {
@@ -112,79 +109,160 @@ export default function MotHistoryDownloadButton({
         y += 1;
       };
 
-      doc.setFillColor(12, 21, 40);
-      doc.rect(0, 0, pageWidth, 34, "F");
+      // --- HEADER ---
+      doc.setFillColor(240, 245, 255); // #F0F5FF
+      doc.rect(0, 0, pageWidth, 55, "F");
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(20);
-      doc.setTextColor(255, 255, 255);
-      doc.text("MOT History Report", marginX, 15);
+      doc.setTextColor(39, 71, 161); // #2747A1
+      doc.text("Your Vehicle Report is Ready", pageWidth / 2, 24, { align: "center" });
 
-      doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      doc.text(vehicleTitle, marginX, 22);
-      doc.text(`Registration: ${normalizedReg || "N/A"}`, marginX, 28);
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128); // #6B7280
+      const subtitle = "Review the complete vehicle history, important alerts, and key details to better understand the condition and background of the vehicle.";
+      const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - 40);
+      doc.text(subtitleLines, pageWidth / 2, 32, { align: "center", lineHeightFactor: 1.5 });
 
-      y = 42;
+      y = 65;
 
-      writeSectionTitle("Vehicle Overview");
-      writeField("Make", motHistory?.make || vehicle?.heroSection?.vehicleName);
-      writeField("Model", motHistory?.model || vehicle?.vehicleDetails?.modelVariant);
-      writeField(
-        "Primary Colour",
-        motHistory?.primaryColour || vehicle?.vehicleDetails?.primaryColour,
-      );
-      writeField("Fuel Type", motHistory?.fuelType || vehicle?.vehicleDetails?.fuelType);
-      writeField(
-        "Engine Size",
-        motHistory?.engineSize
-          ? `${motHistory.engineSize} cc`
-          : vehicle?.vehicleDetails?.engine,
-      );
-      writeField("First Used Date", formatDate(motHistory?.firstUsedDate));
-      writeField(
-        "Year of Manufacture",
-        vehicle?.vehicleDetails?.yearOfManufacture,
-      );
-      writeField(
-        "Registration Date",
-        vehicle?.vehicleDetails?.registrationDate,
-      );
-      writeField(
-        "Last V5C Issued Date",
-        formatDate(vehicle?.vehicleDetails?.lastV5CIssuedDate),
-      );
-      writeField(
-        "Wheel Plan",
-        vehicle?.vehicleDetails?.wheelPlan,
-      );
-      writeField(
-        "Exported",
-        vehicle?.importantVehicleInformation?.exported,
-      );
-      writeField("CO2 Emission", vehicle?.co2EmissionFigures?.value);
+      // --- DATA GRID ---
+      const v = vehicle as unknown as VehicleCheckData;
+      const important = v?.importantVehicleInformation || {};
+      const specs = v?.vehicleDetails || {};
 
-      y += 3;
+      const leftFields = [
+        { label: "Make", value: motHistory?.make || v?.heroSection?.vehicleName || "Unknown" },
+        { label: "First registered", value: formatDate(motHistory?.firstUsedDate) || specs?.registrationDate || "Unknown" },
+        { label: "Category of origin", value: specs?.registrationPlace || "UK" },
+        { label: "Police", value: important?.stolen || important?.exTaxiNhsPoliceCheck || "No" },
+        { label: "Finance record", value: important?.onFinance || "No" },
+        { label: "VSC count", value: specs?.lastV5CIssuedDate ? "Available" : "N/A" },
+        { label: "Colour Changes", value: important?.keeperPlateChangesImportExportVinLogbookCheck?.toLowerCase().includes("colour") ? "Yes" : "No" },
+        { label: "Exported", value: important?.exported || "No" },
+        { label: "Internet History", value: important?.internetHistory || "No" },
+      ];
+
+      const rightFields = [
+        { label: "Model", value: motHistory?.model || specs?.modelVariant || "Unknown" },
+        { label: "Engine Capacity", value: motHistory?.engineSize ? `${motHistory.engineSize} cc` : specs?.engine || "Unknown" },
+        { label: "Colour", value: motHistory?.primaryColour || specs?.primaryColour || "Unknown" },
+        { label: "Salvage History", value: important?.salvageHistory || "No" },
+        { label: "High Risk", value: important?.damageHistory || "No" },
+        { label: "Write-off", value: important?.writtenOff || "No" },
+        { label: "Plate Changed", value: important?.keeperPlateChangesImportExportVinLogbookCheck?.toLowerCase().includes("plate") ? "Yes" : "No" },
+        { label: "Imported", value: important?.keeperPlateChangesImportExportVinLogbookCheck?.toLowerCase().includes("import") ? "Yes" : "No" },
+        { label: "Service History", value: important?.fullServiceHistory || "N/A" },
+      ];
+
+      const rowHeight = 9;
+      const colW = (contentWidth / 2) - 4;
+      const numRows = Math.max(leftFields.length, rightFields.length);
+
+      doc.setDrawColor(229, 231, 235); // #E5E7EB
+      doc.setLineWidth(0.3);
+      doc.line(pageWidth / 2, y - 5, pageWidth / 2, y + (numRows * rowHeight) - 5);
+
+      for (let i = 0; i < numRows; i++) {
+        ensureSpace(rowHeight);
+        
+        if (i % 2 !== 0) {
+          doc.setFillColor(248, 250, 252); // #F8FAFC
+          doc.rect(marginX, y - 6, colW, rowHeight, "F");
+          doc.rect(pageWidth / 2 + 4, y - 6, colW, rowHeight, "F");
+        }
+
+        doc.setFontSize(9);
+        
+        if (leftFields[i]) {
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(107, 114, 128);
+          doc.text(leftFields[i].label, marginX + 3, y);
+          
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(17, 24, 39);
+          doc.text(formatValue(leftFields[i].value), marginX + colW - 3, y, { align: "right" });
+        }
+
+        if (rightFields[i]) {
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(107, 114, 128);
+          doc.text(rightFields[i].label, pageWidth / 2 + 7, y);
+          
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(17, 24, 39);
+          doc.text(formatValue(rightFields[i].value), pageWidth - marginX - 3, y, { align: "right" });
+        }
+
+        y += rowHeight;
+      }
+
+      y += 5;
+
+      // --- ALERTS ---
+      ensureSpace(80);
+      const alerts: Array<{ title: string; desc: string }> = [];
+      if (important?.onFinance && important.onFinance !== "No" && important.onFinance !== "N/A") {
+        alerts.push({ title: "FINANCE DATA RECORDED ON THIS VEHICLE", desc: "See details in finance report" });
+      }
+      if (important?.writtenOff && important.writtenOff !== "No" && important.writtenOff !== "N/A") {
+        alerts.push({ title: "CAT N NON STRUCTURAL DAMAGE", desc: "See details in write off report" });
+      }
+      if (important?.keeperPlateChangesImportExportVinLogbookCheck?.toLowerCase().includes("plate")) {
+        alerts.push({ title: "PLATE CHANGE RECORD", desc: "See details in plate changes" });
+      }
+      if (important?.salvageHistory && important.salvageHistory !== "No" && important.salvageHistory !== "N/A") {
+        alerts.push({ title: "THIS VEHICLE WAS SEEN AT SALVAGE AUCTION", desc: "See details and pictures in salvage history" });
+      }
+      if (important?.internetHistory && important.internetHistory !== "No" && important.internetHistory !== "N/A") {
+        alerts.push({ title: "INTERNET LISTING HISTORY FOUND", desc: "See timeline and details in Internet History section" });
+      }
+
+      if (alerts.length === 0) {
+        alerts.push({ title: "NO ALERTS RECORDED", desc: "This vehicle appears to have a clean history based on our records." });
+      }
+
+      const alertRowHeight = 11;
+      const alertsHeight = alerts.length * alertRowHeight + 10;
+      
+      doc.setFillColor(254, 242, 242); // #FEF2F2
+      doc.setDrawColor(254, 226, 226); // #FEE2E2
+      doc.setLineWidth(0.5);
+      doc.roundedRect(marginX, y, contentWidth, alertsHeight, 3, 3, "FD");
+
+      let alertY = y + 8;
+      alerts.forEach(alert => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        if (alerts[0].title === "NO ALERTS RECORDED") {
+           doc.setTextColor(34, 197, 94); // Green for clean
+        } else {
+           doc.setTextColor(220, 38, 38); // #DC2626
+        }
+        
+        doc.text(alert.title, marginX + 6, alertY);
+        
+        doc.setFont("helvetica", "normal");
+        doc.text(alert.desc, marginX + 6, alertY + 4);
+        
+        alertY += alertRowHeight;
+      });
+
+      y += alertsHeight + 15;
+
+      // --- EXTRA MOT DATA FOR COMPLETENESS ---
       writeSectionTitle("MOT Summary");
       writeField("Total Tests", motHistory?.totalTests);
       writeField("Total Passed", motHistory?.totalPassed);
       writeField("Total Failed", motHistory?.totalFailed);
       writeField("Latest Test Result", motHistory?.latestTestResult);
       writeField("Latest Expiry Date", formatDate(motHistory?.latestExpiryDate));
-      writeField(
-        "Last Mileage",
-        formatMileage(
-          motHistory?.lastMileage,
-          motHistory?.motTests?.[0]?.odometerUnit,
-          motHistory?.motTests?.[0]?.odometerResultType,
-        ),
-      );
 
       y += 3;
-      writeSectionTitle("Timeline");
+      writeSectionTitle("MOT Timeline");
 
       const tests = motHistory?.motTests ?? [];
-
       if (!tests.length) {
         writeWrappedText("No MOT tests were returned for this vehicle.", {
           size: 10,
@@ -195,14 +273,14 @@ export default function MotHistoryDownloadButton({
           ensureSpace(28);
 
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(11);
+          doc.setFontSize(10);
           doc.setTextColor(15, 23, 42);
           doc.text(
             `${index + 1}. ${formatValue(test.testResult)} - ${formatDate(test.completedDate)}`,
             marginX,
             y,
           );
-          y += 6;
+          y += 5;
 
           writeField(
             "Mileage",
@@ -213,7 +291,6 @@ export default function MotHistoryDownloadButton({
             ),
           );
           writeField("Expiry Date", formatDate(test.expiryDate));
-          writeField("Odometer Status", test.odometerResultType);
 
           const comments =
             test.rfrAndComments?.filter((comment) => Boolean(comment?.text)) ?? [];
@@ -229,16 +306,13 @@ export default function MotHistoryDownloadButton({
                   lineHeight: 4.5,
                 },
               );
-              y += 1;
             });
           } else {
             writeWrappedText("- Refusals/advisories: N/A", {
               size: 9,
               color: [100, 116, 139],
               indent: 3,
-              lineHeight: 4.5,
             });
-            y += 1;
           }
 
           y += 3;
