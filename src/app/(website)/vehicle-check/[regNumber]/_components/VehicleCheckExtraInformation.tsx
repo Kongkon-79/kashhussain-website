@@ -17,9 +17,11 @@ import {
 } from "lucide-react";
 
 import type { VehicleCheckData } from "./vehicle-check.types";
+import type { MotHistoryData } from "@/app/(website)/mot-history/_components/mot-history.types";
 
 type Props = {
   vehicle: VehicleCheckData;
+  motHistory?: MotHistoryData | null;
 };
 
 type DetailRow = {
@@ -154,10 +156,10 @@ function LinkAction({ label }: { label: string }) {
   );
 }
 
-export default function VehicleCheckExtraInformation({ vehicle }: Props) {
+export default function VehicleCheckExtraInformation({ vehicle, motHistory }: Props) {
   const details = vehicle?.vehicleDetails;
   const mileage = vehicle?.mileageInformation;
-  const motHistory = vehicle?.motHistorySummary;
+  const motHistorySummary = vehicle?.motHistorySummary;
   const performance = vehicle?.performance;
   const info = vehicle?.importantVehicleInformation;
   const dimensions = vehicle?.dimensionsAndWeight;
@@ -315,15 +317,15 @@ export default function VehicleCheckExtraInformation({ vehicle }: Props) {
               <div className="grid grid-cols-3 gap-3 mb-5 px-1 py-1">
                 <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 text-center shadow-sm">
                   <p className="text-[11px] font-medium text-gray-500">Total Tests</p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900">{motHistory?.totalTests ?? 0}</p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900">{motHistory?.totalTests ?? motHistorySummary?.totalTests ?? 0}</p>
                 </div>
                 <div className="rounded-2xl border border-green-100 bg-green-50/50 p-4 text-center shadow-sm">
                   <p className="text-[11px] font-medium text-green-700">Passed</p>
-                  <p className="mt-2 text-3xl font-bold text-green-600">{motHistory?.passed ?? 0}</p>
+                  <p className="mt-2 text-3xl font-bold text-green-600">{motHistory?.totalPassed ?? motHistorySummary?.passed ?? 0}</p>
                 </div>
                 <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 text-center shadow-sm">
                   <p className="text-[11px] font-medium text-gray-500">Failed</p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900">{motHistory?.failed ?? 0}</p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900">{motHistory?.totalFailed ?? motHistorySummary?.failed ?? 0}</p>
                 </div>
               </div>
               <div className="text-center pb-2">

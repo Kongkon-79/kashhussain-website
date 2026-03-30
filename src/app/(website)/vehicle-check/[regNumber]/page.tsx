@@ -18,35 +18,59 @@ async function getVehicleCheck(regNumber: string) {
   const token = (session?.user as { accessToken?: string })?.accessToken;
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/check-car/free`, {
-      method: "POST",
-      headers: {
-        accept: "*/*",
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        registrationNumber: regNumber,
-      }),
-      cache: "no-store",
-    });
+    const [vehicleRes, motRes] = await Promise.all([
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/check-car/free`, {
+        method: "POST",
+        headers: {
+          accept: "*/*",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ registrationNumber: regNumber }),
+        cache: "no-store",
+      }).catch(() => null),
 
-    const payload = (await response.json()) as VehicleCheckResponse;
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/check-car/mot-history`, {
+        method: "POST",
+        headers: {
+          accept: "*/*",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ registrationNumber: regNumber }),
+        cache: "no-store",
+      }).catch(() => null)
+    ]);
 
-    if (!response.ok || !payload?.success) {
-      return {
-        data: null,
-        errorMessage: payload?.message || "Vehicle check request failed.",
-      };
+    let vehicle = null;
+    let errorMessage = "Vehicle check request failed.";
+    if (vehicleRes && vehicleRes.ok) {
+      const payload = (await vehicleRes.json()) as VehicleCheckResponse;
+      if (payload?.success) {
+        vehicle = payload.data;
+        errorMessage = "";
+      } else {
+        errorMessage = payload?.message || errorMessage;
+      }
+    }
+
+    let motHistory = null;
+    if (motRes && motRes.ok) {
+      const motPayload = await motRes.json();
+      if (motPayload?.success) {
+        motHistory = motPayload?.data?.motHistory || null;
+      }
     }
 
     return {
-      data: payload.data,
-      errorMessage: null,
+      vehicle,
+      motHistory,
+      errorMessage: errorMessage || null,
     };
   } catch (error) {
     return {
-      data: null,
+      vehicle: null,
+      motHistory: null,
       errorMessage:
         error instanceof Error
           ? error.message
@@ -57,19 +81,18 @@ async function getVehicleCheck(regNumber: string) {
 
 export default async function VehicleCheckPage({ params }: PageProps) {
   const regNumber = decodeURIComponent(params.regNumber);
-  const { data, errorMessage } = await getVehicleCheck(regNumber);
-
-  console.log("data : ----------------------", data)
+  const { vehicle, motHistory, errorMessage } = await getVehicleCheck(regNumber);
 
   return (
     <div >
       <VehicleCheckDetails
         regNumber={regNumber}
-        vehicle={data}
+        vehicle={vehicle}
+        motHistory={motHistory}
         errorMessage={errorMessage}
       />
       <PricingSection/>
-      <ChatBot data={data} />
+      <ChatBot data={vehicle} />
     </div>
   );
 }
