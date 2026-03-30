@@ -7,13 +7,27 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { MessageSquareText, Send, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { VehicleCheckData } from "@/app/(website)/vehicle-check/[regNumber]/_components/vehicle-check.types"
+import Image from "next/image"
+
+import aiImage from "../../../public/assets/images/ai_prompt.png"
+import { MotHistoryData } from "@/app/(website)/mot-history/_components/mot-history.types"
 
 interface Message {
   sender: "user" | "bot"
   text: string
 }
 
-export function ChatBot({ data }: { data?: VehicleCheckData | null }) {
+type Props = {
+  motHistory?: MotHistoryData | null;
+  data?: VehicleCheckData | null;
+};
+
+
+
+export function ChatBot({
+  data,
+  motHistory,
+}: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<Message[]>([])
@@ -95,12 +109,14 @@ export function ChatBot({ data }: { data?: VehicleCheckData | null }) {
 
     const payload = {
       motor_info: data || {},
+      mot_info: motHistory || {},
+      milleage_info: motHistory || {},
       user_query: userMessage,
       previous_chat: lastTwoPairs,
     }
 
     try {
-      const response = await fetch("https://kashhussain710.onrender.com/api/ai/analysis/motor", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_CHATBOT_URL}/ai/analysis/motor`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -146,10 +162,11 @@ export function ChatBot({ data }: { data?: VehicleCheckData | null }) {
             <CardHeader className="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-4 flex flex-row justify-between items-center flex-shrink-0 shadow-sm border-b-0 space-y-0">
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <MessageSquareText className="h-4 w-4 text-white" />
+                  {/* <MessageSquareText className="h-4 w-4 text-white" /> */}
+                  <Image src={aiImage} alt="ai" width={300} height={300} className="w-10 h-10 rounded-full"/>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[15px] leading-tight text-white">Lio - AI Assistant</h3>
+                  <h3 className="font-semibold text-[15px] leading-tight text-white">AI Assistant</h3>
                   <p className="text-[11px] text-blue-100 font-medium tracking-wide flex items-center gap-1.5 mt-0.5">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
