@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -176,6 +176,44 @@ export default function VehicleCheckExtraInformation({
   const roadTax = vehicle?.roadTax;
   const safetyRatings = vehicle?.safetyRatings;
   const co2 = vehicle?.co2EmissionFigures;
+
+  const derivedMileage = useMemo(() => {
+    const lastMileage = motHistory?.lastMileage;
+    const firstUsedYear = motHistory?.firstUsedDate
+      ? new Date(motHistory.firstUsedDate).getFullYear()
+      : null;
+    const currentYear = new Date().getFullYear();
+    const age = firstUsedYear ? Math.max(1, currentYear - firstUsedYear) : 1;
+    const average = lastMileage ? Math.round(lastMileage / age) : null;
+
+    let hasIssues = false;
+    if (motHistory?.motTests && motHistory.motTests.length >= 2) {
+      const sortedTests = [...motHistory.motTests]
+        .filter((t) => t.completedDate && t.odometerValue)
+        .sort(
+          (a, b) =>
+            new Date(a.completedDate!).getTime() -
+            new Date(b.completedDate!).getTime(),
+        );
+
+      for (let i = 1; i < sortedTests.length; i++) {
+        if (
+          Number(sortedTests[i].odometerValue) <
+          Number(sortedTests[i - 1].odometerValue)
+        ) {
+          hasIssues = true;
+          break;
+        }
+      }
+    }
+
+    return {
+      lastMotMileage: lastMileage || mileage?.lastMotMileage,
+      mileageIssues: hasIssues ? "Yes" : mileage?.mileageIssues || "No",
+      average: average || mileage?.average,
+      status: hasIssues ? "FLAGGED" : mileage?.status || "VERIFIED",
+    };
+  }, [motHistory, mileage]);
 
   return (
     <section className="relative z-20 bg-gray-50/50 py-10 md:py-16">
@@ -377,18 +415,22 @@ export default function VehicleCheckExtraInformation({
                 rows={[
                   {
                     label: "Last MOT Mileage",
-                    value: mileage?.lastMotMileage
-                      ? `${formatNumber(mileage.lastMotMileage)}`
+                    value: derivedMileage.lastMotMileage
+                      ? `${formatNumber(derivedMileage.lastMotMileage as number)}`
                       : FALLBACK_VALUE,
                   },
                   {
                     label: "Mileage issues",
-                    value: mileage?.mileageIssues || "No",
+                    value: derivedMileage.mileageIssues,
+                    tone:
+                      derivedMileage.mileageIssues === "Yes"
+                        ? "danger"
+                        : "default",
                   },
                   {
                     label: "Average",
-                    value: mileage?.average
-                      ? formatNumber(mileage.average)
+                    value: derivedMileage.average
+                      ? `${formatNumber(derivedMileage.average as number)} / year`
                       : FALLBACK_VALUE,
                   },
                 ]}
@@ -397,8 +439,14 @@ export default function VehicleCheckExtraInformation({
                 <span className="text-[13px] font-medium text-gray-600">
                   Status
                 </span>
-                <span className="inline-flex items-center justify-center rounded-full bg-[#FFFBEB] px-3.5 py-1 text-[10px] uppercase font-bold text-amber-600 border border-amber-200">
-                  {mileage?.status || "UNSEEN"}
+                <span
+                  className={`inline-flex items-center justify-center rounded-full px-3.5 py-1 text-[10px] uppercase font-bold border ${
+                    derivedMileage.status === "FLAGGED"
+                      ? "bg-red-50 text-red-600 border-red-200"
+                      : "bg-[#F0FDF4] text-green-700 border-green-200"
+                  }`}
+                >
+                  {derivedMileage.status}
                 </span>
               </div>
               <div className="mt-2 text-center pb-2">
