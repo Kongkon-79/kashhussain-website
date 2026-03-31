@@ -153,7 +153,7 @@ export default function FreeCheckTable() {
                     </td>
 
                     <td className="px-6 py-4 text-base font-normal text-[#3B82F6] underline leading-normal">
-                      <Link href='/'>
+                      <Link href={`/?reg=${contact?.heroSection?.registrationNumber || ""}`}>
                       Check Again
                       </Link>
                     </td>
